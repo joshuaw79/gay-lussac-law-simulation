@@ -4,17 +4,159 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Gay-Lussac Simulation</title>
-<link rel="stylesheet" href="style.css">
+<style>
+body {
+    font-family: Arial, sans-serif;
+    text-align: center;
+    margin: 0;
+    padding: 0;
+    background-color: #f0f0f0;
+}
+
+canvas {
+    background-color: #ffffff;
+    border: 2px solid #333;
+    display: block;
+    margin: 20px auto;
+}
+
+#controls {
+    margin: 10px;
+}
+
+#pressureGauge {
+    width: 300px;
+    height: 20px;
+    border: 1px solid #333;
+    margin: 10px auto;
+    background-color: #ddd;
+    position: relative;
+}
+
+#pressureFill {
+    height: 100%;
+    width: 0;
+    background-color: orange;
+}
+</style>
 </head>
 <body>
 <h1>Gay-Lussac Simulation</h1>
 
-<label for="temperature">Temperature (K): </label>
-<input type="range" id="temperature" min="100" max="1000" value="300">
-<span id="tempDisplay">300 K</span>
+<div id="controls">
+    <label for="temperature">Temperature (K): </label>
+    <input type="range" id="temperature" min="100" max="1000" value="300">
+    <span id="tempDisplay">300 K</span>
+</div>
 
-<canvas id="simulationCanvas"></canvas>
+<canvas id="simulationCanvas" width="600" height="400"></canvas>
 
-<script src="script.js"></script>
+<p>Container Volume: <span id="volumeDisplay">600 × 400</span> px²</p>
+<p>Pressure:</p>
+<div id="pressureGauge">
+    <div id="pressureFill"></div>
+</div>
+
+<script>
+const canvas = document.getElementById("simulationCanvas");
+const ctx = canvas.getContext("2d");
+
+const tempSlider = document.getElementById("temperature");
+const tempDisplay = document.getElementById("tempDisplay");
+
+const pressureFill = document.getElementById("pressureFill");
+const volumeDisplay = document.getElementById("volumeDisplay");
+
+const NUM_PARTICLES = 50;
+let particles = [];
+let pressureHits = 0;
+
+// Display container volume
+volumeDisplay.textContent = `${canvas.width} × ${canvas.height} px²`;
+
+class Particle {
+    constructor() {
+        this.radius = 5;
+        this.x = Math.random() * (canvas.width - 2 * this.radius) + this.radius;
+        this.y = Math.random() * (canvas.height - 2 * this.radius) + this.radius;
+        this.speed = 1;
+        this.angle = Math.random() * 2 * Math.PI;
+    }
+
+    update() {
+        this.x += this.speed * Math.cos(this.angle);
+        this.y += this.speed * Math.sin(this.angle);
+
+        // Bounce off walls & count hits
+        if (this.x - this.radius < 0) {
+            this.angle = Math.PI - this.angle;
+            pressureHits++;
+            this.x = this.radius;
+        }
+        if (this.x + this.radius > canvas.width) {
+            this.angle = Math.PI - this.angle;
+            pressureHits++;
+            this.x = canvas.width - this.radius;
+        }
+        if (this.y - this.radius < 0) {
+            this.angle = -this.angle;
+            pressureHits++;
+            this.y = this.radius;
+        }
+        if (this.y + this.radius > canvas.height) {
+            this.angle = -this.angle;
+            pressureHits++;
+            this.y = canvas.height - this.radius;
+        }
+    }
+
+    draw() {
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, 2 * Math.PI);
+        ctx.fillStyle = "dodgerblue";
+        ctx.fill();
+        ctx.strokeStyle = "black";
+        ctx.stroke();
+    }
+}
+
+// Initialize particles
+for (let i = 0; i < NUM_PARTICLES; i++) {
+    particles.push(new Particle());
+}
+
+// Update particle speed based on temperature
+function updateParticleSpeed() {
+    const temp = parseInt(tempSlider.value);
+    tempDisplay.textContent = `${temp} K`;
+    const baseSpeed = temp / 300; // 300K ~ speed 1
+    particles.forEach(p => p.speed = baseSpeed);
+}
+
+// Animation loop
+function animate() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    pressureHits = 0;
+
+    particles.forEach(p => {
+        p.update();
+        p.draw();
+    });
+
+    // Update pressure gauge
+    // Max possible hits per frame is roughly NUM_PARTICLES * 4
+    let pressure = Math.min(pressureHits / (NUM_PARTICLES * 4), 1);
+    pressureFill.style.width = (pressure * 100) + "%";
+
+    requestAnimationFrame(animate);
+}
+
+// Event listener
+tempSlider.addEventListener("input", updateParticleSpeed);
+
+// Start simulation
+updateParticleSpeed();
+animate();
+</script>
 </body>
 </html>
