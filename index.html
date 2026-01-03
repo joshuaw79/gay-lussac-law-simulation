@@ -38,6 +38,10 @@ canvas {
     width: 0;
     background-color: orange;
 }
+
+#pressureValue {
+    font-weight: bold;
+}
 </style>
 </head>
 <body>
@@ -52,7 +56,7 @@ canvas {
 <canvas id="simulationCanvas" width="600" height="300"></canvas>
 
 <p>Container Volume: <span id="volumeDisplay"></span> m³</p>
-<p>Pressure:</p>
+<p>Pressure Indicator: <span id="pressureValue"></span></p>
 <div id="pressureGauge">
     <div id="pressureFill"></div>
 </div>
@@ -65,19 +69,20 @@ const tempSlider = document.getElementById("temperature");
 const tempDisplay = document.getElementById("tempDisplay");
 
 const pressureFill = document.getElementById("pressureFill");
+const pressureValueDisplay = document.getElementById("pressureValue");
 const volumeDisplay = document.getElementById("volumeDisplay");
 
-// Assign real-world dimensions (meters)
-const containerWidthM = 1.0;  // 1 meter
-const containerHeightM = 0.5; // 0.5 meter
-const containerVolume = containerWidthM * containerHeightM; // 0.5 m³
+// Real-world container dimensions (meters)
+const containerWidthM = 1.0;
+const containerHeightM = 0.5;
+const containerVolume = containerWidthM * containerHeightM;
 volumeDisplay.textContent = containerVolume.toFixed(2);
 
+// Particle settings
 const NUM_PARTICLES = 50;
 let particles = [];
-let pressure = 0;
+let pressure = 0; // accumulated collisions
 
-// Particle class
 class Particle {
     constructor() {
         this.radius = 5;
@@ -91,27 +96,30 @@ class Particle {
         this.x += this.speed * Math.cos(this.angle);
         this.y += this.speed * Math.sin(this.angle);
 
-        // Bounce off walls and add to pressure
+        // Check for wall collisions
+        let hit = false;
         if (this.x - this.radius < 0) {
             this.angle = Math.PI - this.angle;
-            pressure += 1;
             this.x = this.radius;
+            hit = true;
         }
         if (this.x + this.radius > canvas.width) {
             this.angle = Math.PI - this.angle;
-            pressure += 1;
             this.x = canvas.width - this.radius;
+            hit = true;
         }
         if (this.y - this.radius < 0) {
             this.angle = -this.angle;
-            pressure += 1;
             this.y = this.radius;
+            hit = true;
         }
         if (this.y + this.radius > canvas.height) {
             this.angle = -this.angle;
-            pressure += 1;
             this.y = canvas.height - this.radius;
+            hit = true;
         }
+
+        if (hit) pressure += 1; // increase pressure for collisions
     }
 
     draw() {
@@ -131,29 +139,34 @@ for (let i = 0; i < NUM_PARTICLES; i++) {
 
 // Update particle speed based on temperature
 function updateParticleSpeed() {
-    const temp = parseInt(tempSlider.value);
-    tempDisplay.textContent = `${temp} K`;
-    const baseSpeed = temp / 300; // scale: 300K ~ speed 1
+    const T = parseInt(tempSlider.value);
+    tempDisplay.textContent = `${T} K`;
+    const baseSpeed = T / 300; // speed scales with temperature
     particles.forEach(p => p.speed = baseSpeed);
 }
 
 // Animation loop
 function animate() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    // Reset collision count per frame
+    let collisionsThisFrame = 0;
 
     particles.forEach(p => {
+        const prevPressure = pressure;
         p.update();
         p.draw();
+        collisionsThisFrame += pressure - prevPressure; // count collisions
     });
 
-    // Update pressure gauge
-    // Scale pressure to max gauge fill (arbitrary mapping)
-    let maxPressure = NUM_PARTICLES * 10; // max hits per frame accumulation
-    let fillPercent = Math.min(pressure / maxPressure, 1) * 100;
+    // Smooth pressure display using a decay factor
+    pressure = pressure * 0.9 + collisionsThisFrame;
+
+    // Update gauge
+    const maxPressureVisual = NUM_PARTICLES * 5; // adjust sensitivity
+    const fillPercent = Math.min(pressure / maxPressureVisual, 1) * 100;
     pressureFill.style.width = fillPercent + "%";
 
-    // Slowly decay pressure so gauge responds dynamically
-    pressure *= 0.95;
+    pressureValueDisplay.textContent = Math.round(fillPercent) + "%";
 
     requestAnimationFrame(animate);
 }
@@ -161,7 +174,7 @@ function animate() {
 // Event listener
 tempSlider.addEventListener("input", updateParticleSpeed);
 
-// Start
+// Start simulation
 updateParticleSpeed();
 animate();
 </script>
