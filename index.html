@@ -87,7 +87,7 @@ canvas {
 
     <div class="graphContainer">
         <canvas id="graphCanvas" width="400" height="300"></canvas>
-        <p>Pressure vs Temperature</p>
+        <p><strong>Relationship between Pressure and Temperature</strong></p>
     </div>
 </div>
 
@@ -176,14 +176,29 @@ function updateParticleSpeed() {
 
 function drawGraph() {
     graphCtx.clearRect(0, 0, graphCanvas.width, graphCanvas.height);
+
     // axes
     graphCtx.beginPath();
-    graphCtx.moveTo(40, 10);
-    graphCtx.lineTo(40, 280);
-    graphCtx.lineTo(390, 280);
+    graphCtx.moveTo(50, 10);  // top-left margin
+    graphCtx.lineTo(50, 280); // y-axis
+    graphCtx.lineTo(390, 280); // x-axis
     graphCtx.strokeStyle = "#000";
     graphCtx.lineWidth = 2;
     graphCtx.stroke();
+
+    // axis labels
+    graphCtx.fillStyle = "#000";
+    graphCtx.font = "14px Arial";
+    // Y-axis label rotated
+    graphCtx.save();
+    graphCtx.translate(15, 150);
+    graphCtx.rotate(-Math.PI / 2);
+    graphCtx.textAlign = "center";
+    graphCtx.fillText("Pressure (atm)", 0, 0);
+    graphCtx.restore();
+    // X-axis label
+    graphCtx.textAlign = "center";
+    graphCtx.fillText("Temperature (K)", 220, 295);
 
     // plot points
     const maxT = 1000;
@@ -192,10 +207,12 @@ function drawGraph() {
     graphCtx.fillStyle = "red";
     graphCtx.beginPath();
     dataPoints.forEach((pt, i) => {
-        const x = 40 + (pt.T / maxT) * 350;
-        const y = 280 - (pt.P / maxP) * 270;
+        const x = 50 + ((pt.T - 100) / (maxT - 100)) * 340; // scaled x
+        const y = 280 - (pt.P / maxP) * 270; // scaled y
         if (i === 0) graphCtx.moveTo(x, y);
         else graphCtx.lineTo(x, y);
+        // small circle at point
+        graphCtx.moveTo(x, y);
         graphCtx.arc(x, y, 2, 0, 2 * Math.PI);
     });
     graphCtx.stroke();
