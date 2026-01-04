@@ -70,7 +70,6 @@ canvas {
 
 <div id="controls">
     <label for="temperature">Temperature (K): </label>
-    <!-- Slider now starts at 0 -->
     <input type="range" id="temperature" min="0" max="1000" value="300">
     <input type="number" id="tempNumber" value="300">
     <span id="tempDisplay">300 K</span>
@@ -127,7 +126,7 @@ class Particle {
         this.radius = 5;
         this.x = Math.random() * (canvas.width - 2 * this.radius) + this.radius;
         this.y = Math.random() * (canvas.height - 2 * this.radius) + this.radius;
-        this.speed = 1;
+        this.speed = 0;
         this.angle = Math.random() * 2 * Math.PI;
     }
 
@@ -155,17 +154,18 @@ let dataPoints = []; // store P-T points for graph
 
 function updateParticleSpeed() {
     let sliderTemp = parseInt(tempSlider.value);
-    // Enforce minimum temperature of 100 K in simulation
-    T = Math.max(sliderTemp, 100);
 
-    tempNumber.value = sliderTemp;
-    tempDisplay.textContent = `${sliderTemp} K`;
-
-    const baseSpeed = T / T0;
+    // For particle speed: use the actual slider value
+    const baseSpeed = Math.max(sliderTemp / T0, 0); // 0 speed at 0 K
     particles.forEach(p => p.speed = baseSpeed);
 
-    const P = P0 * (T / T0);
+    // For pressure calculation: enforce minimum 100 K
+    const pressureTemp = Math.max(sliderTemp, 100);
+    const P = P0 * (pressureTemp / T0);
+
     pressureValueDisplay.textContent = P.toFixed(2);
+    tempDisplay.textContent = `${sliderTemp} K`;
+    tempNumber.value = sliderTemp;
 
     const maxTemp = 1000;
     const fillPercent = Math.min(sliderTemp / maxTemp, 1) * 100;
@@ -184,7 +184,7 @@ function drawGraph() {
 
     // axes
     graphCtx.beginPath();
-    graphCtx.moveTo(50, 10);  // top-left margin
+    graphCtx.moveTo(50, 10);
     graphCtx.lineTo(50, 280); // y-axis
     graphCtx.lineTo(390, 280); // x-axis
     graphCtx.strokeStyle = "#000";
@@ -194,6 +194,7 @@ function drawGraph() {
     // axis labels
     graphCtx.fillStyle = "#000";
     graphCtx.font = "14px Arial";
+
     // Y-axis label rotated
     graphCtx.save();
     graphCtx.translate(15, 150);
@@ -201,6 +202,7 @@ function drawGraph() {
     graphCtx.textAlign = "center";
     graphCtx.fillText("Pressure (atm)", 0, 0);
     graphCtx.restore();
+
     // X-axis label
     graphCtx.textAlign = "center";
     graphCtx.fillText("Temperature (K)", 220, 295);
@@ -212,8 +214,8 @@ function drawGraph() {
     graphCtx.fillStyle = "red";
     graphCtx.beginPath();
     dataPoints.forEach((pt, i) => {
-        const x = 50 + ((pt.T - 0) / maxT) * 340; // scale x from 0→1000
-        const y = 280 - (pt.P / maxP) * 270; 
+        const x = 50 + ((pt.T - 0) / maxT) * 340;
+        const y = 280 - (pt.P / maxP) * 270;
         if (i === 0) graphCtx.moveTo(x, y);
         else graphCtx.lineTo(x, y);
         graphCtx.moveTo(x, y);
@@ -226,7 +228,7 @@ tempSlider.addEventListener("input", updateParticleSpeed);
 
 tempNumber.addEventListener("input", () => {
     let val = parseInt(tempNumber.value);
-    if (isNaN(val)) return; // allow empty while typing
+    if (isNaN(val)) return; // allow empty
     if (val < 0) val = 0;
     if (val > 1000) val = 1000;
     tempSlider.value = val;
